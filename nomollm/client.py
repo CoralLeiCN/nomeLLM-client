@@ -59,24 +59,55 @@ class MCPClient:
         print("\nConnected to server with tools:", [tool.name for tool in tools])
 
     async def process_query(self, query: str) -> str:
-        """Process a query using Claude and available tools"""
-        messages = [{"role": "user", "content": query}]
+        """
+        https://modelcontextprotocol.io/docs/concepts/tools#tool-definition-structure
+        {
+        name: string;          // Unique identifier for the tool
+        description?: string;  // Human-readable description
+        inputSchema: {         // JSON Schema for the tool's parameters
+            type: "object",
+            properties: { ... }  // Tool-specific parameters
+        }
 
+
+        Process a query using Claude and available tools
+        """
+        # Define user prompt
+        messages = [
+            types.Content(
+                role="user",
+                parts=[types.Part(text=query)],
+            )
+        ]
         response = await self.session.list_tools()
         available_tools = [
             {
                 "name": tool.name,
                 "description": tool.description,
-                "input_schema": tool.inputSchema,
+                "parameters": tool.inputSchema,
             }
             for tool in response.tools
         ]
 
         # Initial LLM API call
+        tools = types.Tool(function_declarations=available_tools)
+        config = types.GenerateContentConfig(tools=[tools])
         response = self.llm_client.models.generate_content(
-            model="gemini-2.0-flash-001", contents="Why is the sky blue?"
+            model="gemini-2.0-flash-001",
+            contents=messages,
+            config=config,
         )
-        #!todo missing the function call part
+        # Check for a function call
+        if response.candidates[0].content.parts[0].function_call:
+            function_call = response.candidates[0].content.parts[0].function_call
+            print(f"Function to call: {function_call.name}")
+            print(f"Arguments: {function_call.args}")
+            #  In a real app, you would call your function here:
+            #  result = schedule_meeting(**function_call.args)
+        else:
+            print("No function call found in the response.")
+            print(response.text)
+        return response.text
 
     async def chat_loop(self):
         """Run an interactive chat loop"""
