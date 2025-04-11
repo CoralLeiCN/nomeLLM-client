@@ -73,7 +73,7 @@ class MCPClient:
         Process a query using Claude and available tools
         """
         # Define user prompt
-        messages = [
+        contents = [
             types.Content(
                 role="user",
                 parts=[types.Part(text=query)],
@@ -94,20 +94,48 @@ class MCPClient:
         config = types.GenerateContentConfig(tools=[tools])
         response = self.llm_client.models.generate_content(
             model="gemini-2.0-flash-001",
-            contents=messages,
+            contents=contents,
             config=config,
         )
         # Check for a function call
-        if response.candidates[0].content.parts[0].function_call:
-            function_call = response.candidates[0].content.parts[0].function_call
-            print(f"Function to call: {function_call.name}")
-            print(f"Arguments: {function_call.args}")
-            #  In a real app, you would call your function here:
-            #  result = schedule_meeting(**function_call.args)
+        if response.function_calls:
+            print("No function call found in the response.")
+            print(response.text)
+
+            for tool_call in response.function_calls:
+                tool_name = tool_call.name
+                tool_args = tool_call.args
+
+                print(f"Function to call: {tool_name}")
+                print(f"Arguments: {tool_args}")
+
+                result = await self.session.call_tool(tool_name, tool_args)
+
+                function_response_part = types.Part.from_function_response(
+                    name=tool_name,
+                    response={"result": result},
+                )
+                # Append function call and result of the function execution to contents
+                contents.append(
+                    types.Content(
+                        role="model", parts=[types.Part(function_call=tool_call)]
+                    )
+                )  # Append the model's function call message
+                contents.append(
+                    types.Content(role="user", parts=[function_response_part])
+                )  # Append the function response
+
+            final_response = self.llm_client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=contents,
+                config=config,
+            )
+
         else:
             print("No function call found in the response.")
             print(response.text)
-        return response.text
+            return response.text
+        return final_response.text
 
     async def chat_loop(self):
         """Run an interactive chat loop"""
