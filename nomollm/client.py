@@ -8,6 +8,7 @@ from google import genai
 from google.genai import types
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from utils import format_available_tools
 
 load_dotenv()  # load environment variables from .env
 
@@ -79,16 +80,8 @@ class MCPClient:
                 parts=[types.Part(text=query)],
             )
         ]
-        response = await self.session.list_tools()
-        available_tools = [
-            {
-                "name": tool.name,
-                "description": tool.description,
-                "parameters": tool.inputSchema,
-            }
-            for tool in response.tools
-        ]
-
+        tools = await self.session.list_tools()
+        available_tools = format_available_tools(tools)
         # Initial LLM API call
         tools = types.Tool(function_declarations=available_tools)
         config = types.GenerateContentConfig(tools=[tools])
