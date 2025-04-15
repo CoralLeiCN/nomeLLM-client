@@ -59,7 +59,7 @@ class MCPClient:
         tools = response.tools
         print("\nConnected to server with tools:", [tool.name for tool in tools])
 
-    async def process_query(self, query: str) -> str:
+    async def process_query(self, query: str, contents_history=None) -> str:
         """
         https://modelcontextprotocol.io/docs/concepts/tools#tool-definition-structure
         {
@@ -73,13 +73,24 @@ class MCPClient:
 
         Process a query using Claude and available tools
         """
-        # Define user prompt
-        contents = [
-            types.Content(
-                role="user",
-                parts=[types.Part(text=query)],
+        # if not new conversation
+        if contents_history:
+            contents = contents_history
+            contents.append(
+                types.Content(
+                    role="user",
+                    parts=[types.Part(text=query)],
+                )
             )
-        ]
+        # a new conversation
+        else:
+            # Define user prompt
+            contents = [
+                types.Content(
+                    role="user",
+                    parts=[types.Part(text=query)],
+                )
+            ]
         tools = await self.session.list_tools()
         available_tools = format_available_tools(tools)
         # Initial LLM API call
@@ -123,34 +134,44 @@ class MCPClient:
                 contents=contents,
                 config=config,
             )
+            contents.append(
+                types.Content(
+                    role="model", parts=[types.Part(text=final_response.text)]
+                )
+            )  # Append the model's function call message
 
         else:
             print("No function call found in the response.")
             print(response.text)
-            return response.text
-        return final_response.text
+            contents.append(
+                types.Content(role="model", parts=[types.Part(text=response.text)])
+            )
+            return response.text, contents
+        return final_response.text, contents
 
     async def chat_loop(self):
         """Run an interactive chat loop"""
         print("\nMCP Client Started!")
         print("Type your queries, 'new' to continus the chat, or 'quit' to exit.")
-
+        contents_history = None
         while True:
-            try:
-                query = input("\nQuery: ").strip()
+            # try:
+            query = input("\nQuery: ").strip()
 
-                if query.lower() == "quit":
-                    break
-                elif query.lower() == "new":
-                    print("\nStarting a new conversation...")
-                    response = await self.process_query(query)
-                    continue
+            if query.lower() == "quit":
+                break
+            elif query.lower() == "new":
+                print("\nStarting a new conversation...")
+                response, contents_history = await self.process_query(query)
+            else:
+                response, contents_history = await self.process_query(
+                    query, contents_history
+                )
 
-                response = await self.process_query(query)
-                print("\n" + response)
+            print("\n" + response)
 
-            except Exception as e:
-                print(f"\nError: {str(e)}")
+            # except Exception as e:
+            #     print(f"\nError: {str(e)}")
 
     async def cleanup(self):
         """Clean up resources"""
