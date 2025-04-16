@@ -138,7 +138,7 @@ class MCPClient:
                 types.Content(
                     role="model", parts=[types.Part(text=final_response.text)]
                 )
-            )  # Append the model's function call message
+            )  # append the final response
 
         else:
             print("No function call found in the response.")
@@ -152,7 +152,7 @@ class MCPClient:
     async def chat_loop(self):
         """Run an interactive chat loop"""
         print("\nMCP Client Started!")
-        print("Type your queries, 'new' to continus the chat, or 'quit' to exit.")
+        print("Type your queries, 'new' to continue the chat, or 'quit' to exit.")
         contents_history = None
         while True:
             # try:
