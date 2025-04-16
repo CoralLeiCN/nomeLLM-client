@@ -162,7 +162,8 @@ class MCPClient:
                 break
             elif query.lower() == "new":
                 print("\nStarting a new conversation...")
-                response, contents_history = await self.process_query(query)
+                contents_history = None
+                continue
             else:
                 response, contents_history = await self.process_query(
                     query, contents_history
