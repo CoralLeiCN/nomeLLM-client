@@ -186,8 +186,10 @@ async def main():
 
     client = MCPClient()
     try:
-        await client.connect_to_server(sys.argv[1])
-        await client.chat_loop()
+        print(f"there are {len(sys.argv)} mcp servers")
+        for i in range(1, len(sys.argv)):
+            print(f"connecting to {sys.argv[i]}")
+            await client.connect_to_server(sys.argv[i])
     finally:
         await client.cleanup()
 
