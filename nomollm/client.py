@@ -61,13 +61,14 @@ class MCPClient:
         tools = response.tools
         print("\nConnected to server with tools:", [tool.name for tool in tools])
 
-        available_tools = []
+        # get all tools, store in a paired dictionary, key: function name, value: session
+        available_tools = {}
         for session in self.sessions:
             response = await session.list_tools()
             tools = response.tools
-            tools = [tool.name for tool in tools]
-            available_tools.append(tools)
-        print("\nCurrently available tools", available_tools)
+            for tool in tools:
+                available_tools[tool.name] = session
+        print("\nCurrently available tools", list(available_tools.keys()))
 
     async def process_query(self, query: str, contents_history=None) -> str:
         """
@@ -122,6 +123,7 @@ class MCPClient:
             print(response.text)
 
             for tool_call in response.function_calls:
+                # for each tool_call
                 tool_name = tool_call.name
                 tool_args = tool_call.args
 
