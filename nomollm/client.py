@@ -68,6 +68,7 @@ class MCPClient:
             tools = response.tools
             for tool in tools:
                 available_tools[tool.name] = session
+        self.tool_session = available_tools
         print("\nCurrently available tools", list(available_tools.keys()))
 
     async def process_query(self, query: str, contents_history=None) -> str:
@@ -130,7 +131,8 @@ class MCPClient:
                 print(f"Function to call: {tool_name}")
                 print(f"Arguments: {tool_args}")
 
-                result = await self.sessions.call_tool(tool_name, tool_args)
+                related_session = self.tool_session[tool_name]
+                result = await related_session.call_tool(tool_name, tool_args)
 
                 function_response_part = types.Part.from_function_response(
                     name=tool_name,
