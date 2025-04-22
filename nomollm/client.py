@@ -1,5 +1,6 @@
 # modified from https://modelcontextprotocol.io/quickstart/client
 import asyncio
+import itertools
 from contextlib import AsyncExitStack
 from typing import Optional
 
@@ -16,7 +17,7 @@ load_dotenv()  # load environment variables from .env
 class MCPClient:
     def __init__(self):
         # Initialize session and client objects
-        self.session: Optional[ClientSession] = None
+        self.sessions: list[ClientSession] = []
         self.exit_stack = AsyncExitStack()
         self.llm_client = genai.Client()
 
@@ -48,16 +49,25 @@ class MCPClient:
             stdio_client(server_params)
         )
         self.stdio, self.write = stdio_transport
-        self.session = await self.exit_stack.enter_async_context(
-            ClientSession(self.stdio, self.write)
+        self.sessions.append(
+            await self.exit_stack.enter_async_context(
+                ClientSession(self.stdio, self.write)
+            )
         )
-
-        await self.session.initialize()
+        await self.sessions[-1].initialize()
 
         # List available tools
-        response = await self.session.list_tools()
+        response = await self.sessions[-1].list_tools()
         tools = response.tools
         print("\nConnected to server with tools:", [tool.name for tool in tools])
+
+        available_tools = []
+        for session in self.sessions:
+            response = await session.list_tools()
+            tools = response.tools
+            tools = [tool.name for tool in tools]
+            available_tools.append(tools)
+        print("\nCurrently available tools", available_tools)
 
     async def process_query(self, query: str, contents_history=None) -> str:
         """
@@ -91,8 +101,13 @@ class MCPClient:
                     parts=[types.Part(text=query)],
                 )
             ]
-        tools = await self.session.list_tools()
-        available_tools = format_available_tools(tools)
+        available_tools = []
+        for session in self.sessions:
+            tools = await session.list_tools()
+        available_tools.append(format_available_tools(tools))
+
+        available_tools = list(itertools.chain.from_iterable(available_tools))
+        print(f"fetched tools from server: {available_tools}")
         # Initial LLM API call
         tools = types.Tool(function_declarations=available_tools)
         config = types.GenerateContentConfig(tools=[tools])
@@ -113,7 +128,7 @@ class MCPClient:
                 print(f"Function to call: {tool_name}")
                 print(f"Arguments: {tool_args}")
 
-                result = await self.session.call_tool(tool_name, tool_args)
+                result = await self.sessions.call_tool(tool_name, tool_args)
 
                 function_response_part = types.Part.from_function_response(
                     name=tool_name,
@@ -190,6 +205,7 @@ async def main():
         for i in range(1, len(sys.argv)):
             print(f"connecting to {sys.argv[i]}")
             await client.connect_to_server(sys.argv[i])
+        await client.chat_loop()
     finally:
         await client.cleanup()
 
