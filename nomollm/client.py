@@ -205,7 +205,7 @@ async def main():
 
     client = MCPClient()
     try:
-        print(f"there are {len(sys.argv)} mcp servers")
+        print(f"there are {len(sys.argv) - 1} mcp servers")
         for i in range(1, len(sys.argv)):
             print(f"connecting to {sys.argv[i]}")
             await client.connect_to_server(sys.argv[i])
