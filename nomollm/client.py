@@ -106,7 +106,7 @@ class MCPClient:
         available_tools = []
         for session in self.sessions:
             tools = await session.list_tools()
-        available_tools.append(format_available_tools(tools))
+            available_tools.append(format_available_tools(tools))
 
         available_tools = list(itertools.chain.from_iterable(available_tools))
         print(f"fetched tools from server: {available_tools}")
