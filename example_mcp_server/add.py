@@ -1,8 +1,6 @@
 """
 Coped and modified from http://python.langchain.com/docs/how_to/function_calling/"""
 
-from typing import Any
-import httpx
 from mcp.server.fastmcp import FastMCP
 
 # Initialize FastMCP server
