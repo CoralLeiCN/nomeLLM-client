@@ -1,4 +1,4 @@
-# nomeLLM-client
+# nomoLLM-client
 A MCP client that use gemini.
 
 uv run nomollm/client.py example_mcp_server/weather.py example_mcp_server/add.py 
